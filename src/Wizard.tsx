@@ -4,7 +4,19 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import Alert from 'react-bootstrap/Alert';
 import { createClient } from '@supabase/supabase-js'
+
+// URL validation function
+const isValidUrl = (url: string): boolean => {
+  if (!url.trim()) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 // Step 1: Enable Data API
 function EnableDataAPIStep() {
@@ -16,60 +28,61 @@ function EnableDataAPIStep() {
     <div className="mb-3">
       <h4>Enable Data API</h4>
       <ol>
-      <li><p>Choose "Other Provider" for the authentication provider.</p></li>
-      <li>
-      <div className="mb-3">
-        <div className="row align-items-center">
-          <div className="col-md-3">
-            <Form.Label className="mb-0">Use this URL for the JWKS:</Form.Label>
-          </div>
-          <div className="col-md-9">
-            <div className="input-group">
-              <Form.Control 
-                type="text" 
-                value="https://climbing-minnow-11.clerk.accounts.dev/.well-known/jwks.json" 
-                readOnly 
-              />
-              <Button 
-                variant="outline-secondary" 
-                onClick={() => copyToClipboard("https://climbing-minnow-11.clerk.accounts.dev/.well-known/jwks.json")}
-              >
-                Copy
-              </Button>
+        <li>Go to the "Data API" tab</li>
+        <li>Choose "Other Provider" for the authentication provider.</li>
+        <li>
+        <div className="mb-3">
+          <div className="row align-items-center">
+            <div className="col-md-3">
+              <Form.Label className="mb-0">Use this URL for the JWKS:</Form.Label>
+            </div>
+            <div className="col-md-9">
+              <div className="input-group">
+                <Form.Control 
+                  type="text" 
+                  value="https://climbing-minnow-11.clerk.accounts.dev/.well-known/jwks.json" 
+                  readOnly 
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={() => copyToClipboard("https://climbing-minnow-11.clerk.accounts.dev/.well-known/jwks.json")}
+                >
+                  Copy
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      </li>
+        </li>
 
-      <li>
-      <div className="mb-3">
-        <div className="row align-items-center">
-          <div className="col-md-3">
-            <Form.Label className="mb-0">Set JWT audience to:</Form.Label>
-          </div>
-          <div className="col-md-9">
-            <div className="input-group">
-              <Form.Control 
-                type="text" 
-                value="authenticated" 
-                readOnly 
-              />
-              <Button 
-                variant="outline-secondary" 
-                onClick={() => copyToClipboard("authenticated")}
-              >
-                Copy
-              </Button>
+        <li>
+        <div className="mb-3">
+          <div className="row align-items-center">
+            <div className="col-md-3">
+              <Form.Label className="mb-0">Set JWT audience to:</Form.Label>
+            </div>
+            <div className="col-md-9">
+              <div className="input-group">
+                <Form.Control 
+                  type="text" 
+                  value="authenticated" 
+                  readOnly 
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={() => copyToClipboard("authenticated")}
+                >
+                  Copy
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      </li>
+        </li>
 
-      <li>
-      <p>Click Enable</p>
-      </li>
+        <li>
+        <p>Click Enable</p>
+        </li>
       </ol>
       <div className="text-center">
         <img 
@@ -194,14 +207,29 @@ ON users FOR ALL USING (true) WITH CHECK (true);
 }
 
 // Step 4: Configure the API
-function ConfigureAPIStep({ endpointUrl, setEndpointUrl }: {
+function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
   endpointUrl: string;
   setEndpointUrl: (url: string) => void;
+  onError: (message: string) => void;
+  onSuccess: (message: string) => void;
 }) {
-  const handleCheck = () => {
-    // TODO: Implement API check functionality
-    console.log('Checking API endpoint:', endpointUrl);
+  const handleCheck = async () => {
+    // by now teh neon client should be available in the global scope
+    const client = (window as any).neon;
+    if (client) {
+       const { data, error } = await client.from('users').select('*');
+       console.log(data, error);
+       if (error) {
+        onError(`Error fetching data: ${error.message || 'Unknown error occurred'}`);
+       } else {
+        onSuccess(`Successfully fetched ${data?.length || 0} users from the database`);
+       }
+    } else {
+      onError('Neon client is not available. Please make sure you have entered a valid endpoint URL.');
+    }
   };
+
+  const isUrlValid = endpointUrl === '' || isValidUrl(endpointUrl);
 
   return (
     <div className="mb-3">
@@ -213,13 +241,17 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl }: {
       </ol>
       
       <div className="mb-3">
-        <Form.Label>REST Endpoint URL:</Form.Label>
+        <Form.Label>Project URL:</Form.Label>
         <div className="input-group">
           <Form.Control 
             type="text" 
             placeholder="https://your-endpoint-url.com/api" 
             value={endpointUrl} 
             onChange={(e) => setEndpointUrl(e.target.value)}
+            style={{ 
+              borderColor: isUrlValid ? '' : '#dc3545',
+              borderWidth: isUrlValid ? '' : '2px'
+            }}
           />
           <Button 
             variant="primary" 
@@ -228,6 +260,11 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl }: {
             Check
           </Button>
         </div>
+        {!isUrlValid && (
+          <div className="text-danger mt-1">
+            <small>Please enter a valid URL</small>
+          </div>
+        )}
       </div>
       
       <p className="text-muted">
@@ -247,10 +284,19 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl }: {
 }
 
 // Step 5: Try the API
-function TryAPIStep({ endpointUrl, token }: {
+function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
   endpointUrl: string;
+  setEndpointUrl: (url: string) => void;
   token: string;
 }) {
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  
+
+  const isUrlValid = endpointUrl === '' || isValidUrl(endpointUrl);
+
   return (
     <div className="mb-3">
       <h4>Try the API</h4>
@@ -261,27 +307,46 @@ function TryAPIStep({ endpointUrl, token }: {
           <Form.Label>Endpoint URL:</Form.Label>
           <Form.Control 
             type="text" 
+            placeholder="https://your-endpoint-url.com/api" 
             value={endpointUrl} 
-            readOnly 
+            onChange={(e) => setEndpointUrl(e.target.value)}
+            style={{ 
+              borderColor: isUrlValid ? '' : '#dc3545',
+              borderWidth: isUrlValid ? '' : '2px'
+            }}
           />
+          {!isUrlValid && (
+            <div className="text-danger mt-1">
+              <small>Please enter a valid URL</small>
+            </div>
+          )}
         </div>
         <div className="col-md-6">
           <Form.Label>JWT Token:</Form.Label>
-          <Form.Control 
-            type="text" 
-            value={token} 
-            readOnly 
-          />
+          <div className="input-group">
+            <Form.Control 
+              type="text" 
+              value={token} 
+              readOnly 
+            />
+            <Button 
+              variant="outline-secondary" 
+              onClick={() => copyToClipboard(token)}
+            >
+              Copy
+            </Button>
+          </div>
         </div>
       </div>
 
       <ol>
         <li>Open the developer tools in your browser</li>
-        <li>go to the console tab</li>
-        <li>try the following code:
-          <pre>
+        <li>Go to the console tab</li>
+        <li>try the following code (each line individually):
+          <pre className="bg-light p-3 rounded mt-2">
             <code>
-              //
+              neon.from('users').select('id');<br/>
+              neon.from('users').select('*').eq('id', 1);
             </code>
           </pre>
         </li>
@@ -297,6 +362,8 @@ function Wizard() {
   const [token, setToken] = useState<string>();
   const [endpointUrl, setEndpointUrl] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
 
   const refreshJWT = useCallback(() => {
@@ -315,16 +382,18 @@ function Wizard() {
           // Set up auto-refresh timer
           if (refreshTime > 0) {
             setTimeout(() => {
-              console.log('Auto-refreshing JWT token...');
+              setSuccess('Auto-refreshing JWT token...');
               refreshJWT();
             }, refreshTime);
           }
         } catch (error) {
-          console.error('Error parsing JWT token:', error);
+          setError('Error parsing JWT token. Please refresh the page.');
         }
       }
+    }).catch((error) => {
+      setError(`Failed to get JWT token: ${error.message || 'Unknown error occurred'}`);
     });
-  }, [setToken, getToken]);
+  }, [setToken, getToken, setError, setSuccess]);
 
   useEffect(() => {
     refreshJWT();
@@ -332,7 +401,9 @@ function Wizard() {
 
   useEffect(() => {
     
-    if (endpointUrl != '') {
+    if (endpointUrl != '' && isValidUrl(endpointUrl)) {
+      setError(null);
+      setSuccess(null);
       const publicKey = 'dummy-key';
       // strip /rest/v1 from the endpointUrl
       const endpointUrlWithoutRest = endpointUrl.replace('/rest/v1', '');
@@ -344,13 +415,17 @@ function Wizard() {
       // add the client to the global scope
       (window as any).neon = client;
     }
-  }, [token, endpointUrl]);
+  }, [token, endpointUrl, setError, setSuccess]);
 
   const nextStep = () => {
+    setError(null);
+    setSuccess(null);
     setCurrentStep(prev => Math.min(prev + 1, 4)); // Now 5 steps (0-4)
   };
 
   const prevStep = () => {
+    setError(null);
+    setSuccess(null);
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
@@ -363,9 +438,9 @@ function Wizard() {
       case 2:
         return <PermissionsStep />;
       case 3:
-        return <ConfigureAPIStep endpointUrl={endpointUrl} setEndpointUrl={setEndpointUrl} />;
+        return <ConfigureAPIStep endpointUrl={endpointUrl} setEndpointUrl={setEndpointUrl} onError={setError} onSuccess={setSuccess} />;
       case 4:
-        return <TryAPIStep endpointUrl={endpointUrl} token={token || ''} />;
+        return <TryAPIStep endpointUrl={endpointUrl} setEndpointUrl={setEndpointUrl} token={token || ''} />;
       default:
         return null;
     }
@@ -394,6 +469,21 @@ function Wizard() {
         Next →
       </Button>
     </div>
+
+    {/* Error and Success Messages */}
+    {error && (
+      <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
+        <Alert.Heading>Error</Alert.Heading>
+        <p>{error}</p>
+      </Alert>
+    )}
+    
+    {success && (
+      <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="mb-3">
+        <Alert.Heading>Success</Alert.Heading>
+        <p>{success}</p>
+      </Alert>
+    )}
 
     {/* Form Content */}
     <div className="wizard-content">
