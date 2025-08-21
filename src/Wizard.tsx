@@ -255,7 +255,6 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
     const client = (window as any).neon;
     if (client) {
        const { data, error } = await client.from('users').select('*');
-       console.log(data, error);
        if (error) {
         onError(`Error fetching data: ${error.message || 'Unknown error occurred'}`);
        } else {
