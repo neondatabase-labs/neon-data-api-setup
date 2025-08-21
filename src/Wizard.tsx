@@ -7,6 +7,77 @@ import Form from 'react-bootstrap/Form';
 import Alert from 'react-bootstrap/Alert';
 import { createClient } from '@supabase/supabase-js'
 
+// CSS styles for screenshot-like appearance
+const screenshotStyles = `
+  .screenshot-container {
+    position: relative;
+    display: inline-block;
+    margin: 20px 0;
+    border-radius: 16px;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.15),
+      0 2px 8px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 12px;
+    padding-top: 48px;
+    border: 1px solid #e1e5e9;
+    max-width: 90%;
+  }
+  
+  .screenshot-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  
+  .screenshot-container::after {
+    content: '●●●';
+    position: absolute;
+    top: 10px;
+    left: 18px;
+    color: #6c757d;
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .screenshot-image {
+    border-radius: 8px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 0;
+  }
+  
+  .screenshot-container:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 
+      0 16px 48px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .screenshot-caption {
+    font-style: italic;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+  }
+  
+  .screenshot-caption:hover {
+    opacity: 1;
+  }
+`;
+
 // URL validation function
 const isValidUrl = (url: string): boolean => {
   if (!url.trim()) return false;
@@ -85,24 +156,28 @@ function EnableDataAPIStep() {
         </li>
       </ol>
       <div className="text-center">
-        <img 
-          src="/enable-data-api.png" 
-          alt="Enable Data API Configuration" 
-          className="img-fluid"
-          style={{ maxWidth: '100%', height: 'auto' }}
-        />
+        <div className="screenshot-container">
+          <img 
+            src="/enable-data-api.png" 
+            alt="Enable Data API Configuration" 
+            className="img-fluid screenshot-image"
+          />
+        </div>
+        <p className="screenshot-caption text-muted mt-2">
+          <small>📱 Reference: This is how your Neon dashboard should look</small>
+        </p>
       </div>
     </div>
   );
 }
 
-// Step 2: Add Sample Table and Data
-function SampleTableStep() {
+// Step 2: Add Sample Table and Data with Permissions
+function SampleTableAndPermissionsStep() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
 
-  const sampleSQL = `-- Create a sample users table
+  const combinedSQL = `-- Create a sample users table
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -117,50 +192,7 @@ INSERT INTO users (name, email) VALUES
   ('John Doe', 'john@example.com'),
   ('Jane Smith', 'jane@example.com'),
   ('Bob Johnson', 'bob@example.com');
-`;
 
-  return (
-    <div className="mb-3">
-      <h4>Add Sample Table and Data</h4>
-      <ol>
-        <li>Go to the "SQL Editor" tab</li>
-        <li>Paste the sample SQL into the editor</li>
-        <li>Click "Run"</li>
-      </ol>
-      
-      <div className="mb-3">
-        <Form.Label>Sample SQL:</Form.Label>
-        <div className="input-group">
-          <Form.Control 
-            as="textarea" 
-            rows={20}
-            value={sampleSQL} 
-            readOnly 
-            style={{ fontFamily: 'monospace', fontSize: '0.9em' }}
-          />
-          <Button 
-            variant="outline-secondary" 
-            onClick={() => copyToClipboard(sampleSQL)}
-          >
-            Copy
-          </Button>
-        </div>
-      </div>
-      
-      <p className="text-muted">
-        <small>This will create a simple users table with sample data that you can use to test your Data API.</small>
-      </p>
-    </div>
-  );
-}
-
-// Step 3: Set Permissions
-function PermissionsStep() {
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const permissionsSQL = `
 -- Grant permissions to the authenticated role for the users table
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO authenticated;
@@ -168,31 +200,29 @@ GRANT USAGE, SELECT ON SEQUENCE users_id_seq TO authenticated;
 
 -- RLS policy for authenticated users (covers all operations)
 CREATE POLICY "Allow authenticated users full access"
-ON users FOR ALL USING (true) WITH CHECK (true);
-`;
+ON users FOR ALL USING (true) WITH CHECK (true);`;
 
   return (
     <div className="mb-3">
-      <h4>Set Permissions</h4>
+      <h4>Add Sample Table and Data with Permissions</h4>
       <ol>
         <li>Go to the "SQL Editor" tab</li>
-        <li>Paste the permissions SQL into the editor</li>
-        <li>Click "Run"</li>
+        <li>Paste the combined SQL into the editor and click "Run"</li>
       </ol>
       
       <div className="mb-3">
-        <Form.Label>Permissions SQL:</Form.Label>
+        <Form.Label>Combined SQL (Table Creation, Data, and Permissions):</Form.Label>
         <div className="input-group">
           <Form.Control 
             as="textarea" 
-            rows={20}
-            value={permissionsSQL} 
+            rows={25}
+            value={combinedSQL} 
             readOnly 
             style={{ fontFamily: 'monospace', fontSize: '0.9em' }}
           />
           <Button 
             variant="outline-secondary" 
-            onClick={() => copyToClipboard(permissionsSQL)}
+            onClick={() => copyToClipboard(combinedSQL)}
           >
             Copy
           </Button>
@@ -200,13 +230,13 @@ ON users FOR ALL USING (true) WITH CHECK (true);
       </div>
       
       <p className="text-muted">
-        <small>This will grant the necessary permissions to the 'authenticated' role so your Data API can access the tables.</small>
+        <small>This will create a simple users table with sample data and grant the necessary permissions to the 'authenticated' role so your Data API can access the tables.</small>
       </p>
     </div>
   );
 }
 
-// Step 4: Configure the API
+// Step 3: Configure the API
 function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
   endpointUrl: string;
   setEndpointUrl: (url: string) => void;
@@ -214,6 +244,13 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
   onSuccess: (message: string) => void;
 }) {
   const handleCheck = async () => {
+
+    // check for now only that the url is valid
+    // if (!isValidUrl(endpointUrl)) {
+    //   onError('Invalid URL. Please enter a valid URL.');
+    //   return;
+    // }
+    // onSuccess('URL is valid. You can now try the API.');
     // by now teh neon client should be available in the global scope
     const client = (window as any).neon;
     if (client) {
@@ -236,12 +273,12 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
       <h4>Configure the API</h4>
       <ol>
         <li>Go to the "Data API" tab</li>
-        <li>Copy the "Project URL" and paste it into the form below</li>
+        <li>Copy the "REST API Endpoint" and paste it into the form below</li>
         <li>Click "Check"</li>
       </ol>
       
       <div className="mb-3">
-        <Form.Label>Project URL:</Form.Label>
+        <Form.Label>REST API Endpoint:</Form.Label>
         <div className="input-group">
           <Form.Control 
             type="text" 
@@ -272,18 +309,22 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
       </p>
 
       <div className="text-center">
-        <img 
-          src="/test-data-api.png" 
-          alt="Test Data API Configuration" 
-          className="img-fluid"
-          style={{ maxWidth: '100%', height: 'auto' }}
-        />
+        <div className="screenshot-container">
+          <img 
+            src="/test-data-api.png" 
+            alt="Test Data API Configuration" 
+            className="img-fluid screenshot-image"
+          />
+        </div>
+        <p className="screenshot-caption text-muted mt-2">
+          <small>📱 Reference: This is how your Data API configuration should look</small>
+        </p>
       </div>
     </div>
   );
 }
 
-// Step 5: Try the API
+// Step 4: Try the API
 function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
   endpointUrl: string;
   setEndpointUrl: (url: string) => void;
@@ -293,7 +334,7 @@ function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
     navigator.clipboard.writeText(text);
   };
 
-  
+  const [activeTab, setActiveTab] = useState<'browser' | 'terminal'>('browser');
 
   const isUrlValid = endpointUrl === '' || isValidUrl(endpointUrl);
 
@@ -339,20 +380,100 @@ function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
         </div>
       </div>
 
-      <ol>
-        <li>Open the developer tools in your browser</li>
-        <li>Go to the console tab</li>
-        <li>try the following code (each line individually):
-          <pre className="bg-light p-3 rounded mt-2">
-            <code>
-              neon.from('users').select('id');<br/>
-              neon.from('users').select('*').eq('id', 1);
-            </code>
-          </pre>
-        </li>
-      </ol>
+      {/* Tab Navigation */}
+      <div className="mt-4">
+        <ul className="nav nav-tabs" id="apiTabs" role="tablist">
+          <li className="nav-item" role="presentation">
+            <button
+              className={`nav-link ${activeTab === 'browser' ? 'active' : ''}`}
+              onClick={() => setActiveTab('browser')}
+              type="button"
+              role="tab"
+            >
+              Browser Console with SDK
+            </button>
+          </li>
+          <li className="nav-item" role="presentation">
+            <button
+              className={`nav-link ${activeTab === 'terminal' ? 'active' : ''}`}
+              onClick={() => setActiveTab('terminal')}
+              type="button"
+              role="tab"
+            >
+              Terminal with curl
+            </button>
+          </li>
+        </ul>
 
-      <div className="text-center"></div>
+        {/* Tab Content */}
+        <div className="tab-content mt-3" id="apiTabContent">
+          {/* Browser Console Tab */}
+          <div className={`tab-pane fade ${activeTab === 'browser' ? 'show active' : ''}`} role="tabpanel">
+            <div className="mb-3">
+              <h6>Instructions:</h6>
+              <ol>
+                <li>Open the developer tools in this browser (F12)</li>
+                <li>Go to the console tab</li>
+                <li>Try the following commands (each line individually):</li>
+              </ol>
+            </div>
+            
+            {[
+              "await neon.from('users').select('id')",
+              "await neon.from('users').select('*').eq('id', 1)",
+              "await neon.from('users').select('*')"
+            ].map((command, index) => (
+              <div key={index} className="mb-3">
+                <div className="input-group">
+                  <Form.Control 
+                    type="text" 
+                    value={command}
+                    readOnly 
+                  />
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => copyToClipboard(command)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Terminal Tab */}
+          <div className={`tab-pane fade ${activeTab === 'terminal' ? 'show active' : ''}`} role="tabpanel">
+            <div className="mb-3">
+              <h6>Instructions:</h6>
+              <p>Run the following commands in a terminal:</p>
+            </div>
+            
+            {[
+              `export ENDPOINT_URL="${endpointUrl}"`,
+              `export NEON_JWT="${token}"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=id"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=*&id=eq.1"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=*"`
+            ].map((command, index) => (
+              <div key={index} className="mb-3">
+                <div className="input-group">
+                  <Form.Control 
+                    type="text" 
+                    value={command}
+                    readOnly 
+                  />
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => copyToClipboard(command)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -364,6 +485,17 @@ function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Inject screenshot styles
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = screenshotStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
   
 
   const refreshJWT = useCallback(() => {
@@ -420,7 +552,7 @@ function Wizard() {
   const nextStep = () => {
     setError(null);
     setSuccess(null);
-    setCurrentStep(prev => Math.min(prev + 1, 4)); // Now 5 steps (0-4)
+    setCurrentStep(prev => Math.min(prev + 1, 3)); // Now 4 steps (0-3)
   };
 
   const prevStep = () => {
@@ -434,12 +566,10 @@ function Wizard() {
       case 0:
         return <EnableDataAPIStep />;
       case 1:
-        return <SampleTableStep />;
+        return <SampleTableAndPermissionsStep />;
       case 2:
-        return <PermissionsStep />;
-      case 3:
         return <ConfigureAPIStep endpointUrl={endpointUrl} setEndpointUrl={setEndpointUrl} onError={setError} onSuccess={setSuccess} />;
-      case 4:
+      case 3:
         return <TryAPIStep endpointUrl={endpointUrl} setEndpointUrl={setEndpointUrl} token={token || ''} />;
       default:
         return null;
@@ -458,13 +588,13 @@ function Wizard() {
       </Button>
       
       <div className="text-muted">
-        Step {currentStep + 1} of 5
+        Step {currentStep + 1} of 4
       </div>
       
       <Button 
         variant="primary" 
         onClick={nextStep}
-        disabled={currentStep === 4}
+        disabled={currentStep === 3}
       >
         Next →
       </Button>
