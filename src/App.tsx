@@ -12,7 +12,7 @@ function App() {
     <div>
       <Navbar bg="dark" variant="dark" expand="lg" className="mb-3" fixed="top">
         <Container fluid>
-          <Navbar.Brand href="#home">Neon Data API</Navbar.Brand>
+          <Navbar.Brand href="#home">Neon Data API bug bashing</Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="me-auto">
