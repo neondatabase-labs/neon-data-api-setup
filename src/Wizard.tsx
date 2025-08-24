@@ -99,7 +99,7 @@ function EnableDataAPIStep() {
     <div className="mb-3">
       <h4>Enable Data API</h4>
       <ol>
-        <li>Go to the "Data API" tab</li>
+        <li>Go to the "Data API" tab of your new project</li>
         <li>Choose "Other Provider" for the authentication provider.</li>
         <li>
         <div className="mb-3">
@@ -177,30 +177,87 @@ function SampleTableAndPermissionsStep() {
     navigator.clipboard.writeText(text);
   };
 
-  const combinedSQL = `-- Create a sample users table
-CREATE TABLE users (
+  const combinedSQL = `-- Create clients table
+CREATE TABLE clients (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  company TEXT,
+  phone TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
--- enable RLS
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Create projects table with foreign key to clients
+CREATE TABLE projects (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'active',
+  start_date DATE,
+  end_date DATE,
+  budget DECIMAL(10,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create tasks table with foreign key to projects
+CREATE TABLE tasks (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending',
+  priority TEXT DEFAULT 'medium',
+  assigned_to TEXT,
+  due_date DATE,
+  estimated_hours DECIMAL(5,2),
+  actual_hours DECIMAL(5,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable RLS on all tables
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
 -- Insert sample data
-INSERT INTO users (name, email) VALUES
-  ('John Doe', 'john@example.com'),
-  ('Jane Smith', 'jane@example.com'),
-  ('Bob Johnson', 'bob@example.com');
+INSERT INTO clients (name, email, company, phone) VALUES
+  ('Acme Corp', 'contact@acme.com', 'Acme Corporation', '+1-555-0101'),
+  ('TechStart Inc', 'hello@techstart.com', 'TechStart Inc', '+1-555-0102'),
+  ('Global Solutions', 'info@globalsolutions.com', 'Global Solutions Ltd', '+1-555-0103');
 
--- Grant permissions to the authenticated role for the users table
+INSERT INTO projects (name, description, client_id, status, start_date, end_date, budget) VALUES
+  ('Website Redesign', 'Complete overhaul of company website with modern design', 1, 'active', '2024-01-15', '2024-06-30', 25000.00),
+  ('Mobile App Development', 'iOS and Android app for customer management', 1, 'planning', '2024-07-01', '2024-12-31', 50000.00),
+  ('Database Migration', 'Migrate legacy system to cloud database', 2, 'active', '2024-02-01', '2024-05-31', 15000.00),
+  ('API Integration', 'Integrate third-party services with existing platform', 3, 'completed', '2023-11-01', '2024-01-31', 20000.00);
+
+INSERT INTO tasks (title, description, project_id, status, priority, assigned_to, due_date, estimated_hours, actual_hours) VALUES
+  ('Design Homepage', 'Create wireframes and mockups for homepage', 1, 'in_progress', 'high', 'Sarah Johnson', '2024-03-15', 16.00, 8.00),
+  ('Setup Development Environment', 'Configure local development setup', 1, 'completed', 'medium', 'Mike Chen', '2024-02-01', 4.00, 3.50),
+  ('Database Schema Design', 'Design new database structure', 3, 'completed', 'high', 'Alex Rodriguez', '2024-02-15', 20.00, 18.00),
+  ('API Authentication', 'Implement OAuth2 authentication flow', 4, 'completed', 'high', 'Lisa Wang', '2024-01-15', 12.00, 10.50),
+  ('User Testing', 'Conduct usability testing with target users', 1, 'pending', 'medium', 'Sarah Johnson', '2024-04-01', 8.00, NULL),
+  ('Performance Optimization', 'Optimize database queries and caching', 3, 'in_progress', 'medium', 'Alex Rodriguez', '2024-04-30', 24.00, 12.00);
+
+-- Grant permissions to the authenticated role for all tables
 GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE users_id_seq TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON clients TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON projects TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON tasks TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE clients_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE projects_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE tasks_id_seq TO authenticated;
 
--- RLS policy for authenticated users (covers all operations)
-CREATE POLICY "Allow authenticated users full access"
-ON users FOR ALL USING (true) WITH CHECK (true);`;
+-- RLS policies for authenticated users (covers all operations)
+CREATE POLICY "Allow authenticated users full access to clients"
+ON clients FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated users full access to projects"
+ON projects FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated users full access to tasks"
+ON tasks FOR ALL USING (true) WITH CHECK (true);`;
 
   return (
     <div className="mb-3">
@@ -230,7 +287,7 @@ ON users FOR ALL USING (true) WITH CHECK (true);`;
       </div>
       
       <p className="text-muted">
-        <small>This will create a simple users table with sample data and grant the necessary permissions to the 'authenticated' role so your Data API can access the tables.</small>
+        <small>This will create a clients/projects/tasks database structure with proper foreign key relationships, sample data, and grant the necessary permissions to the 'authenticated' role so your Data API can access the tables.</small>
       </p>
     </div>
   );
@@ -245,20 +302,14 @@ function ConfigureAPIStep({ endpointUrl, setEndpointUrl, onError, onSuccess }: {
 }) {
   const handleCheck = async () => {
 
-    // check for now only that the url is valid
-    // if (!isValidUrl(endpointUrl)) {
-    //   onError('Invalid URL. Please enter a valid URL.');
-    //   return;
-    // }
-    // onSuccess('URL is valid. You can now try the API.');
-    // by now teh neon client should be available in the global scope
+    // by now the neon client should be available in the global scope
     const client = (window as any).neon;
     if (client) {
-       const { data, error } = await client.from('users').select('*');
+       const { data, error } = await client.from('clients').select('id, name, company');
        if (error) {
         onError(`Error fetching data: ${error.message || 'Unknown error occurred'}`);
        } else {
-        onSuccess(`Successfully fetched ${data?.length || 0} users from the database`);
+        onSuccess(`Successfully fetched ${data?.length || 0} clients from the database`);
        }
     } else {
       onError('Neon client is not available. Please make sure you have entered a valid endpoint URL.');
@@ -418,9 +469,10 @@ function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
             </div>
             
             {[
-              "await neon.from('users').select('id')",
-              "await neon.from('users').select('*').eq('id', 1)",
-              "await neon.from('users').select('*')"
+              "await neon.from('clients').select('id, name, company')",
+              "await neon.from('projects').select('id,name,budget,client:clients(name)').gt('budget', 20000)",
+              "await neon.from('projects').select('*').eq('id', 1).single()",
+              "await neon.from('clients').select('*, projects(*, tasks(*))')"
             ].map((command, index) => (
               <div key={index} className="mb-3">
                 <div className="input-group">
@@ -450,9 +502,10 @@ function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
             {[
               `export ENDPOINT_URL="${endpointUrl}"`,
               `export NEON_JWT="${token}"`,
-              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=id"`,
-              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=*&id=eq.1"`,
-              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/users?select=*"`
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/clients?select=id,name,company"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/projects?select=id,name,budget,client:clients(name)&budget=gt.20000"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/projects?select=*&id=eq.1"`,
+              `curl -i -H "Authorization: Bearer $NEON_JWT" "$ENDPOINT_URL/clients?select=*,projects(*,tasks(*))"`
             ].map((command, index) => (
               <div key={index} className="mb-3">
                 <div className="input-group">
@@ -472,6 +525,7 @@ function TryAPIStep({ endpointUrl, setEndpointUrl, token }: {
             ))}
           </div>
         </div>
+        <div>If you are familiar with <a href="https://postgrest.org/en/stable/api.html">PostgREST</a> / <a href="https://supabase.com/docs/reference/javascript/select">Supabase</a> you can try your own queries against the clients/projects/tasks tables</div>
       </div>
     </div>
   );
