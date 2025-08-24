@@ -99,7 +99,7 @@ function EnableDataAPIStep() {
     <div className="mb-3">
       <h4>Enable Data API</h4>
       <ol>
-        <li>Go to the "Data API" tab of your new project</li>
+        <li>Go to the "Data API" tab of your new project (main menu on the left)</li>
         <li>Choose "Other Provider" for the authentication provider.</li>
         <li>
         <div className="mb-3">
@@ -130,7 +130,7 @@ function EnableDataAPIStep() {
         <div className="mb-3">
           <div className="row align-items-center">
             <div className="col-md-3">
-              <Form.Label className="mb-0">Set JWT audience to:</Form.Label>
+              <Form.Label className="mb-0">Set JWT audience to (optional):</Form.Label>
             </div>
             <div className="col-md-9">
               <div className="input-group">
